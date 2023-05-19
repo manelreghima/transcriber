@@ -41,4 +41,7 @@ if st.button("Get Answer"):
 
         # Get answer
         result = qa_yt.run(query)
-        st.write("Answer:", result.answer)
+        if isinstance(result, str):
+            st.write("Answer:", result)
+        else:
+            st.write("Answer:", result.answer)
