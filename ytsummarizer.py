@@ -10,7 +10,7 @@ import os
 os.environ["OPENAI_API_KEY"] = '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'
 
 # Define Streamlit app
-st.title("Streamlit Chat Demo")
+st.title("Youtube Summarizer Demo")
 st.write("This demo uses a chat model to answer questions about a YouTube video.")
 
 # Display video selection and question inputs
