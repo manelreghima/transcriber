@@ -4,10 +4,15 @@ from langchain.vectorstores import Chroma
 from langchain.embeddings.openai import OpenAIEmbeddings
 from langchain.chat_models import ChatOpenAI
 from langchain.chains import RetrievalQA
+from dotenv import load_dotenv
 import os
+import openai 
 
-# Set OpenAI API key
-os.environ["OPENAI_API_KEY"] = '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'
+# Load environment variables from .env file
+load_dotenv()
+# Access the API key
+api_key = os.environ["OPENAI_API_KEY"]
+openai.api_key = os.environ["OPENAI_API_KEY"]
 
 # Define Streamlit app
 st.title("Youtube Summarizer Demo")
