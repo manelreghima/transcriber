@@ -1,5 +1,5 @@
 import streamlit as st
-from langchain.document_loaders import YoutubeLoader
+from langchain.document_loaders import DocumentLoader
 from langchain.vectorstores import Chroma
 from langchain.embeddings.openai import OpenAIEmbeddings
 from langchain.chat_models import ChatOpenAI
@@ -29,8 +29,8 @@ if st.button("Get Answer"):
     elif not query:
         st.warning("Please enter a question.")
     else:
-        # Load documents (or transcribe) with YoutubeLoader
-        loader = YoutubeLoader(video_id=YT_video, language="en")
+        # Load documents (or transcribe) with DocumentLoader
+        loader = DocumentLoader(source="youtube", source_id=YT_video, language="en")
         yt_docs = loader.load_and_split()
         embeddings = OpenAIEmbeddings()
         yt_docsearch = Chroma.from_documents(yt_docs, embeddings)
