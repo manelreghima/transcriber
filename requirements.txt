@@ -4,3 +4,4 @@ langchain
 openai
 tiktoken
 transformers
+google-api-python-client
