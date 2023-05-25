@@ -1,18 +1,12 @@
 import streamlit as st
-from langchain.document_loaders import DocumentLoader
-from langchain.vectorstores import Chroma
-from langchain.embeddings.openai import OpenAIEmbeddings
-from langchain.chat_models import ChatOpenAI
-from langchain.chains import RetrievalQA
+from googleapiclient.discovery import build
 from dotenv import load_dotenv
 import os
-import openai 
+from transformers import AutoModelForQuestionAnswering, AutoTokenizer
+import torch
 
 # Load environment variables from .env file
 load_dotenv()
-# Access the API key
-api_key = os.environ["OPENAI_API_KEY"]
-openai.api_key = os.environ["OPENAI_API_KEY"]
 
 # Define Streamlit app
 st.title("Youtube Summarizer Demo")
@@ -29,24 +23,47 @@ if st.button("Get Answer"):
     elif not query:
         st.warning("Please enter a question.")
     else:
-        # Load documents (or transcribe) with DocumentLoader
-        loader = DocumentLoader(source="youtube", source_id=YT_video, language="en")
-        yt_docs = loader.load_and_split()
-        embeddings = OpenAIEmbeddings()
-        yt_docsearch = Chroma.from_documents(yt_docs, embeddings)
+        # Create a YouTube Data API client
+        api_key = os.environ["YOUTUBE_API_KEY"]
+        youtube = build("youtube", "v3", developerKey=api_key)
 
-        # Define LLM
-        llm = ChatOpenAI(model_name="gpt-3.5-turbo", temperature=0.9)
+        # Retrieve video caption tracks
+        caption_response = youtube.captions().list(
+            part="id",
+            videoId=YT_video
+        ).execute()
 
-        qa_yt = RetrievalQA.from_chain_type(
-            llm=llm,
-            chain_type="stuff",
-            retriever=yt_docsearch.as_retriever()
-        )
+        if "items" in caption_response:
+            caption_tracks = caption_response["items"]
+            # Retrieve captions in different languages
+            captions = []
+            for track in caption_tracks:
+                caption = youtube.captions().download(
+                    id=track["id"],
+                    tfmt="srt"
+                ).execute()
+                captions.append(caption)
 
-        # Get answer
-        result = qa_yt.run(query)
-        if isinstance(result, str):
-            st.write("Answer:", result)
+            # Combine captions into a single text
+            captions_text = "\n".join(captions)
+
+            # Tokenize the captions and question
+            tokenizer = AutoTokenizer.from_pretrained("bert-base-multilingual-cased")
+            encoded_inputs = tokenizer(captions_text, query, padding=True, truncation=True, max_length=512, return_tensors="pt")
+
+            # Load the question-answering model
+            model = AutoModelForQuestionAnswering.from_pretrained("bert-base-multilingual-cased")
+
+            # Perform question-answering
+            with torch.no_grad():
+                outputs = model(**encoded_inputs)
+                start_logits = outputs.start_logits
+                end_logits = outputs.end_logits
+                start_index = torch.argmax(start_logits, dim=1).item()
+                end_index = torch.argmax(end_logits, dim=1).item()
+                answer = tokenizer.convert_tokens_to_string(tokenizer.convert_ids_to_tokens(encoded_inputs["input_ids"][0][start_index:end_index+1]))
+
+            # Display the answer
+            st.write("Answer:", answer)
         else:
-            st.write("Answer:", result.answer)
+            st.warning("No captions found for the provided YouTube video ID.")
