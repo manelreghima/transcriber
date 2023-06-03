@@ -33,8 +33,11 @@ if st.button("Get Answer"):
             videoId=YT_video
         ).execute()
 
+                
+        # Check if "items" key is present in caption_response
         if "items" in caption_response:
             caption_tracks = caption_response["items"]
+            
             # Retrieve captions in different languages
             captions = []
             for track in caption_tracks:
@@ -49,7 +52,14 @@ if st.button("Get Answer"):
 
             # Tokenize the captions and question
             tokenizer = AutoTokenizer.from_pretrained("bert-base-multilingual-cased")
-            encoded_inputs = tokenizer(captions_text, query, padding=True, truncation=True, max_length=512, return_tensors="pt")
+            encoded_inputs = tokenizer.encode_plus(
+                captions_text,
+                query,
+                padding=True,
+                truncation=True,
+                max_length=512,
+                return_tensors="pt"
+            )
 
             # Load the question-answering model
             model = AutoModelForQuestionAnswering.from_pretrained("bert-base-multilingual-cased")
@@ -59,9 +69,13 @@ if st.button("Get Answer"):
                 outputs = model(**encoded_inputs)
                 start_logits = outputs.start_logits
                 end_logits = outputs.end_logits
-                start_index = torch.argmax(start_logits, dim=1).item()
-                end_index = torch.argmax(end_logits, dim=1).item()
-                answer = tokenizer.convert_tokens_to_string(tokenizer.convert_ids_to_tokens(encoded_inputs["input_ids"][0][start_index:end_index+1]))
+                start_index = torch.argmax(start_logits)
+                end_index = torch.argmax(end_logits)
+                answer = tokenizer.convert_tokens_to_string(
+                    tokenizer.convert_ids_to_tokens(
+                        encoded_inputs["input_ids"][0][start_index : end_index + 1]
+                    )
+                )
 
             # Display the answer
             st.write("Answer:", answer)
